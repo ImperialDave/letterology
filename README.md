@@ -1,11 +1,12 @@
 # Letterology
 
+This repository is a mirror. Prime source: [`ImperialDave/Letterology-Calculator`](https://github.com/ImperialDave/Letterology-Calculator).
+
+Prime repository: [`ImperialDave/Letterology-Calculator`](https://github.com/ImperialDave/Letterology-Calculator)
+
 Official instrument. Letterize a username. Read today's luck. Time a decision.
 
 A letter does not change its nature — only its willingness. That is luck.
-
-Live source: [`ImperialDave/Letterology-Calculator`](https://github.com/ImperialDave/Letterology-Calculator)  
-Canon house: [`ImperialDave/letterology`](https://github.com/ImperialDave/letterology)
 
 ## Use it
 
