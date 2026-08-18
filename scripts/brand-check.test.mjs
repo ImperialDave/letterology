@@ -6,7 +6,6 @@ import { test } from "node:test";
 import {
   MAX_CARD_BYTES,
   computeBrandWarnings,
-  rootDeclaresGameImage,
   rootDeclaresOgTypeGame,
 } from "./brand-check.mjs";
 
@@ -19,16 +18,9 @@ const ogImage = host
 const CUSTOM_ROOT = "const ogImage = host ? `https://${host}/og.jpg` : undefined;";
 
 const GAME_OG_TYPE = '{ property: "og:type", content: "x:game" }';
-const GAME_IMAGE = '{ property: "x:game:image", content: xBanner }';
-const CUSTOM_GAME_ROOT = `${CUSTOM_ROOT}\nmeta: [${GAME_OG_TYPE}, ${GAME_IMAGE}],`;
+const CUSTOM_GAME_ROOT = `${CUSTOM_ROOT}\nmeta: [${GAME_OG_TYPE}],`;
 
-function makeWorkspace({
-  rootTsx,
-  cardFile,
-  narrowFile,
-  cardBytes = 200 * 1024,
-  narrowBytes = 200 * 1024,
-} = {}) {
+function makeWorkspace({ rootTsx, cardFile, cardBytes = 200 * 1024 } = {}) {
   const root = mkdtempSync(join(tmpdir(), "brand-check-"));
   mkdirSync(join(root, "public"), { recursive: true });
   mkdirSync(join(root, "src/routes"), { recursive: true });
@@ -37,9 +29,6 @@ function makeWorkspace({
   }
   if (cardFile !== undefined) {
     writeFileSync(join(root, "public", cardFile), Buffer.alloc(cardBytes, 7));
-  }
-  if (narrowFile !== undefined) {
-    writeFileSync(join(root, "public", narrowFile), Buffer.alloc(narrowBytes, 7));
   }
   return root;
 }
@@ -100,38 +89,22 @@ test("oversized card warns on the scraper budget (jpg and legacy png)", () => {
       cardBytes: MAX_CARD_BYTES + 1,
     });
     const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
+    assert.equal(warnings.length, 2, cardFile);
     assert.match(warnings[0], /over 600 KB/);
-    assert.match(warnings.join("\n"), /og:type="x:game"/);
+    assert.match(warnings[1], /og:type="x:game"/);
   }
 });
 
 test("compliant jpg card under budget still warns without og:type for canvas apps", () => {
   const root = makeWorkspace({ rootTsx: CUSTOM_ROOT, cardFile: "og.jpg" });
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
-  assert.match(warnings.join("\n"), /og:type="x:game"/);
-  assert.match(warnings.join("\n"), /x:game:image/);
-  assert.match(warnings.join("\n"), /x-banner\.jpg/);
-});
-
-test("compliant game (custom card + og:type + x:game:image + narrow card) is silent", () => {
-  const root = makeWorkspace({
-    rootTsx: CUSTOM_GAME_ROOT,
-    cardFile: "og.jpg",
-    narrowFile: "x-banner.jpg",
-  });
-  assert.deepEqual(computeBrandWarnings({ hasCanvas: true, workspaceRoot: root }), []);
-});
-
-test("oversized x-banner warns on the same scraper budget as og.jpg", () => {
-  const root = makeWorkspace({
-    rootTsx: CUSTOM_GAME_ROOT,
-    cardFile: "og.jpg",
-    narrowFile: "x-banner.jpg",
-    narrowBytes: MAX_CARD_BYTES + 1,
-  });
-  const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /x-banner\.jpg is over 600 KB/);
+  assert.match(warnings[0], /og:type="x:game"/);
+});
+
+test("compliant game (custom card + og:type game) is silent for canvas apps", () => {
+  const root = makeWorkspace({ rootTsx: CUSTOM_GAME_ROOT, cardFile: "og.jpg" });
+  assert.deepEqual(computeBrandWarnings({ hasCanvas: true, workspaceRoot: root }), []);
 });
 
 test("legacy png under budget with custom wiring still requires og:type for canvas", () => {
@@ -140,19 +113,18 @@ test("legacy png under budget with custom wiring still requires og:type for canv
     cardFile: "og.png",
   });
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
-  assert.match(warnings.join("\n"), /og:type="x:game"/);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /og:type="x:game"/);
 });
 
-test("legacy png + og:type game still needs the X feed card", () => {
+test("legacy png + og:type game is silent for canvas apps", () => {
   const root = makeWorkspace({
     rootTsx:
       'const ogImage = host ? `https://${host}/og.png` : undefined;\n'
       + '{ property: "og:type", content: "x:game" }',
     cardFile: "og.png",
   });
-  const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
-  assert.match(warnings.join("\n"), /x-banner\.jpg/);
-  assert.match(warnings.join("\n"), /x:game:image/);
+  assert.deepEqual(computeBrandWarnings({ hasCanvas: true, workspaceRoot: root }), []);
 });
 
 test("rootDeclaresOgTypeGame accepts property/content order variants", () => {
@@ -212,20 +184,6 @@ test("canvas app with comment-only og:type still warns", () => {
     cardFile: "og.jpg",
   });
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
-  assert.match(warnings.join("\n"), /og:type="x:game"/);
-});
-
-test("rootDeclaresGameImage requires a live x:game:image property", () => {
-  assert.equal(
-    rootDeclaresGameImage('{ property: "x:game:image", content: xBanner }'),
-    true,
-  );
-  assert.equal(
-    rootDeclaresGameImage('{ property: "og:image", content: ogImage }'),
-    false,
-  );
-  assert.equal(
-    rootDeclaresGameImage('// { property: "x:game:image", content: xBanner }'),
-    false,
-  );
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /og:type="x:game"/);
 });

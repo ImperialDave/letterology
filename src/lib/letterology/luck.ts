@@ -1,24 +1,17 @@
-import { almanacOf, type AlmanacDay, type DayCharge } from "./calendar";
+import { houseOf } from "./archetypes";
+import { almanacOf, type AlmanacDay, type CivilDate } from "./calendar";
 import { relationTo } from "./circle";
-import { houseOf } from "./houses";
+import { buildHoroscope } from "./engine";
 import { themeOf } from "./lexicon";
-import type { Portrait } from "./letterize";
-import { letterize } from "./letterize";
-import type { Letter, Polarity } from "./types";
+import type { Horoscope, Letter } from "./types";
 
-export type LuckBand =
-  | "open"
-  | "warm"
-  | "workable"
-  | "mixed"
-  | "contrary"
-  | "withdraw";
+export type LuckBand = "open" | "warm" | "workable" | "mixed" | "contrary" | "withdraw";
+export type DayCharge = "solar" | "lunar";
 
 export interface SeatLuck {
   letter: Letter;
   role: "house" | "manner" | "field";
   meet: "same" | "ally" | "enemy" | "none";
-  carried: boolean;
   current: "favorable" | "contrary" | "quiet";
 }
 
@@ -68,38 +61,7 @@ const BANDS: { min: number; band: LuckBand; verdict: string }[] = [
   { min: 0, band: "withdraw", verdict: "Withdraw and wait" },
 ];
 
-function bandOf(score: number) {
-  return BANDS.find((row) => score >= row.min) ?? BANDS[BANDS.length - 1];
-}
-
-function currentOf(letter: Letter, day: AlmanacDay): SeatLuck["current"] {
-  if (day.favorable.includes(letter)) return "favorable";
-  if (day.contrary.includes(letter)) return "contrary";
-  return "quiet";
-}
-
-function meetOf(from: Letter, to: Letter): SeatLuck["meet"] {
-  if (from === to) return "same";
-  const rel = relationTo(from, to);
-  if (rel === "ally") return "ally";
-  if (rel === "enemy") return "enemy";
-  return "none";
-}
-
-function pointsForMeet(meet: SeatLuck["meet"]): number {
-  if (meet === "same") return 28;
-  if (meet === "ally") return 16;
-  if (meet === "enemy") return -14;
-  return 2;
-}
-
-function pointsForCurrent(current: SeatLuck["current"], carried: boolean): number {
-  if (current === "favorable") return carried ? 12 : 6;
-  if (current === "contrary") return carried ? -10 : -4;
-  return 0;
-}
-
-const ACT_COUNSEL: Record<Letter, { lean: string; wait: string }> = {
+const ACT_COUNSEL: Record<string, { lean: string; wait: string }> = {
   A: { lean: "start, apply, name the want, leave the old room", wait: "locking a long commitment you have not tested" },
   B: { lean: "keep, host, repair a bond, stay with what is already yours", wait: "a clean break or a public revolt" },
   C: { lean: "say the honest no, start the reaction, scrap the dead rule", wait: "forcing peace or signing a cage" },
@@ -128,22 +90,55 @@ const ACT_COUNSEL: Record<Letter, { lean: string; wait: string }> = {
   Z: { lean: "concentrate, finish at full intensity, refuse the lukewarm", wait: "living only on the peak, or a zeal with no descent" },
 };
 
-export function luckOf(portrait: Portrait, date: Date | AlmanacDay = new Date()): LuckReading {
-  const day = date instanceof Date ? almanacOf(date) : date;
+function bandOf(score: number) {
+  return BANDS.find((row) => score >= row.min) ?? BANDS[BANDS.length - 1];
+}
+
+function meetOf(from: Letter, to: Letter): SeatLuck["meet"] {
+  if (from === to) return "same";
+  const rel = relationTo(from, to);
+  if (rel === "ally") return "ally";
+  if (rel === "enemy") return "enemy";
+  return "none";
+}
+
+function currentOf(letter: Letter, favorable: Letter[], contrary: Letter[]): SeatLuck["current"] {
+  if (favorable.includes(letter)) return "favorable";
+  if (contrary.includes(letter)) return "contrary";
+  return "quiet";
+}
+
+function pointsForMeet(meet: SeatLuck["meet"]): number {
+  if (meet === "same") return 28;
+  if (meet === "ally") return 16;
+  if (meet === "enemy") return -14;
+  return 2;
+}
+
+function pointsForCurrent(current: SeatLuck["current"], carried: boolean): number {
+  if (current === "favorable") return carried ? 12 : 6;
+  if (current === "contrary") return carried ? -10 : -4;
+  return 0;
+}
+
+export function luckOf(portrait: Horoscope, date: Date | CivilDate | AlmanacDay = new Date()): LuckReading {
+  const day = "dateLetter" in date && "iso" in date ? date : almanacOf(date);
   const present = new Set(portrait.inventory.map((item) => item.letter));
+  const favorable = [day.dateLetter, ...day.dateCourt.allies];
+  const contrary = [...day.dateCourt.enemies];
+  const charge: DayCharge = day.weekdayRole === "enemy" ? "lunar" : "solar";
 
   const seats: SeatLuck[] = (
     [
-      [portrait.signature, "house"],
-      [portrait.manner, "manner"],
-      [portrait.field, "field"],
+      [portrait.triad[0], "house"],
+      [portrait.triad[1], "manner"],
+      [portrait.triad[2], "field"],
     ] as const
   ).map(([letter, role]) => ({
     letter,
     role,
     meet: meetOf(letter, day.dateLetter),
-    carried: present.has(letter),
-    current: currentOf(letter, day),
+    current: currentOf(letter, favorable, contrary),
   }));
 
   let score = 50;
@@ -153,20 +148,14 @@ export function luckOf(portrait: Portrait, date: Date | AlmanacDay = new Date())
     score += pointsForCurrent(seat.current, present.has(seat.letter)) * weight;
   });
 
-  day.favorable.forEach((letter) => {
+  favorable.forEach((letter) => {
     if (present.has(letter) && !seats.some((s) => s.letter === letter)) score += 4;
   });
-  day.contrary.forEach((letter) => {
+  contrary.forEach((letter) => {
     if (present.has(letter) && !seats.some((s) => s.letter === letter)) score -= 3;
   });
 
-  if (portrait.polarity !== "unmarked") {
-    if (portrait.polarity === day.charge) score += 6;
-    else score -= 4;
-  }
-
   if (day.fortnight.hinge) score -= 4;
-
   score = Math.max(0, Math.min(100, Math.round(score)));
   const { band, verdict } = bandOf(score);
 
@@ -175,32 +164,30 @@ export function luckOf(portrait: Portrait, date: Date | AlmanacDay = new Date())
   const carriedDate = present.has(day.dateLetter);
 
   const weather = carriedDate
-    ? `Today sits ${day.dateLetter}, the ${dateHouse.noun} — and that letter is already in this handle. The day is using something you already carry.`
-    : `Today sits ${day.dateLetter}, the ${dateHouse.noun}. That letter is not in this handle, so treat the day as a guest with a job, not as a verdict on who you are.`;
+    ? `Today is ${day.dateLetter}, the ${dateHouse.noun} — and that letter is already in this handle. The day is using something you already carry.`
+    : `Today is ${day.dateLetter}, the ${dateHouse.noun}. That letter is not in this handle, so treat the day as a guest with a job, not as a verdict on who you are.`;
 
-  const whyParts = seats.map((seat) => {
-    const noun = houseOf(seat.letter).noun;
-    if (seat.current === "favorable") {
-      return `${seat.letter} (${noun}, your ${seat.role}) runs warm today.`;
-    }
-    if (seat.current === "contrary") {
-      return `${seat.letter} (${noun}, your ${seat.role}) withdraws today.`;
-    }
-    return `${seat.letter} (${noun}, your ${seat.role}) is quiet in today's court.`;
-  });
+  const why = seats
+    .map((seat) => {
+      const noun = houseOf(seat.letter).noun;
+      if (seat.current === "favorable") return `${seat.letter} (${noun}, your ${seat.role}) runs warm today.`;
+      if (seat.current === "contrary") return `${seat.letter} (${noun}, your ${seat.role}) withdraws today.`;
+      return `${seat.letter} (${noun}, your ${seat.role}) is quiet in today's court.`;
+    })
+    .join(" ");
 
-  const leanLetters = [portrait.signature, portrait.manner, ...day.favorable].filter(
-    (letter, i, arr) => arr.indexOf(letter) === i && !day.contrary.includes(letter),
+  const leanLetters = [portrait.signature, portrait.triad[1], ...favorable].filter(
+    (letter, i, arr) => arr.indexOf(letter) === i && !contrary.includes(letter),
   );
-  const waitLetters = day.contrary.slice(0, 2);
-  const askLetter = portrait.kinAbsent[0] ?? day.favorable.find((l) => !present.has(l)) ?? "D";
+  const waitLetters = contrary.slice(0, 2);
+  const askLetter = portrait.kinAbsent[0] ?? favorable.find((letter) => !present.has(letter)) ?? "D";
 
   const counsel: Counsel = {
     do: `Lean into ${leanLetters
       .slice(0, 2)
-      .map((l) => ACT_COUNSEL[l]?.lean ?? themeOf(l).gift)
+      .map((letter) => ACT_COUNSEL[letter]?.lean ?? themeOf(letter).gift)
       .join("; ")}.`,
-    wait: `Wait on ${waitLetters.map((l) => ACT_COUNSEL[l]?.wait ?? themeOf(l).challenge).join("; ")}.`,
+    wait: `Wait on ${waitLetters.map((letter) => ACT_COUNSEL[letter]?.wait ?? themeOf(letter).challenge).join("; ")}.`,
     ask: portrait.kinAbsent[0]
       ? `Ask a ${houseOf(askLetter).noun} (${askLetter}) to finish what this handle cannot finish alone. ${themeOf(askLetter).gift}`
       : `Your allies are already written in the handle. Use them today — do not outsource the job.`,
@@ -216,17 +203,17 @@ export function luckOf(portrait: Portrait, date: Date | AlmanacDay = new Date())
   return {
     iso: day.iso,
     weekdayName: day.weekdayName,
-    charge: day.charge,
+    charge,
     dateLetter: day.dateLetter,
     fortnightLetter: day.fortnight.letter,
     weekdayLetter: day.weekdayLetter,
-    favorable: day.favorable,
-    contrary: day.contrary,
+    favorable,
+    contrary,
     score,
     band,
     verdict,
     weather,
-    why: whyParts.join(" "),
+    why,
     seats,
     counsel,
     invitation,
@@ -234,17 +221,17 @@ export function luckOf(portrait: Portrait, date: Date | AlmanacDay = new Date())
 }
 
 export function decide(
-  portrait: Portrait,
+  portrait: Horoscope,
   actRaw: string,
-  date: Date | AlmanacDay = new Date(),
+  date: Date | CivilDate | AlmanacDay = new Date(),
 ): DecisionReading | null {
-  const act = letterize(actRaw, portrait.polarity);
+  const act = buildHoroscope(actRaw);
   if (!act) return null;
-  const day = date instanceof Date ? almanacOf(date) : date;
+  const day = "dateLetter" in date && "iso" in date ? date : almanacOf(date);
   const luck = luckOf(portrait, day);
   const actLetter = act.signature;
   const meetYou = meetOf(portrait.signature, actLetter);
-  const actCurrent = currentOf(actLetter, day);
+  const actCurrent = currentOf(actLetter, luck.favorable, luck.contrary);
 
   const fitToYou: DecisionReading["fitToYou"] =
     meetYou === "same" ? "home" : meetYou === "ally" ? "ally" : meetYou === "enemy" ? "friction" : "foreign";
@@ -281,10 +268,10 @@ export function decide(
     fitToYou === "home"
       ? `This act enters as ${actLetter}, the same house you sit. It is your kind of move.`
       : fitToYou === "ally"
-        ? `This act sits ${actLetter} (${actHouse.noun}), an ally of your ${youHouse.noun}. It completes a job you started.`
+        ? `This act is ${actLetter} (${actHouse.noun}), an ally of your ${youHouse.noun}. It completes a job you started.`
         : fitToYou === "friction"
-          ? `This act sits ${actLetter} (${actHouse.noun}), a counterweight to your ${youHouse.noun}. The argument is real — useful if you do not pretend it is easy.`
-          : `This act sits ${actLetter} (${actHouse.noun}). It is not your usual country. That can be right. It will cost more attention.`;
+          ? `This act is ${actLetter} (${actHouse.noun}), a counterweight to your ${youHouse.noun}. The argument is real — useful if you do not pretend it is easy.`
+          : `This act is ${actLetter} (${actHouse.noun}). It is not your usual country. That can be right. It will cost more attention.`;
 
   const timeLine =
     actCurrent === "favorable"
@@ -303,7 +290,7 @@ export function decide(
           : `Rewrite the act so it starts from your house (${portrait.signature}, ${youHouse.noun}) or from a warm letter today (${luck.favorable.join(", ")}).`;
 
   return {
-    act: act.display,
+    act: act.displayName,
     actLetter,
     actHouse: actHouse.house,
     fitToYou,
@@ -313,8 +300,4 @@ export function decide(
     body: `${fitLine} ${timeLine}`,
     next,
   };
-}
-
-export function polarityFromCharge(charge: DayCharge): Polarity {
-  return charge;
 }

@@ -13,8 +13,10 @@ export interface Pigment {
   css: string;
   hex: string;
   ink: string;
+  inkHex: string;
 }
 
+/** Mineral names — one per seat, walking the wheel from dawn gold. */
 const NAMES: Record<Letter, string> = {
   A: "Amber",
   B: "Olive",
@@ -45,8 +47,13 @@ const NAMES: Record<Letter, string> = {
 };
 
 const VOWELS = new Set<Letter>(["A", "E", "I", "O", "U"]);
+
 const STEP = 360 / 26;
+/** A sits 12 o'clock as dawn gold, then the wheel walks the spectrum. */
 const HUE0 = 52;
+
+const INK_HEX = "#1c1712";
+const PAPER_HEX = "#f6f0e4";
 
 function chromaFor(hue: number, vowel: boolean): number {
   let c = vowel ? 0.118 : 0.142;
@@ -90,18 +97,25 @@ function hexByte(x: number): string {
     .padStart(2, "0");
 }
 
+/** OKLab → sRGB hex. Used on share cards (resvg has no oklch). */
 export function oklchToHex(oklch: Oklch): string {
   const { L, a, b } = toLab(oklch);
   const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
   const l = l_ * l_ * l_;
   const m = m_ * m_ * m_;
   const s = s_ * s_ * s_;
   const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
   const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-  const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+  const bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
   return `#${hexByte(r)}${hexByte(g)}${hexByte(bl)}`;
+}
+
+function inkFor(l: number): { ink: string; inkHex: string } {
+  return l >= 0.62
+    ? { ink: "var(--color-ink)", inkHex: INK_HEX }
+    : { ink: "var(--color-raised)", inkHex: PAPER_HEX };
 }
 
 function buildPigment(letter: Letter, index: number): Pigment {
@@ -112,13 +126,15 @@ function buildPigment(letter: Letter, index: number): Pigment {
     c: chromaFor(h, vowel),
     h,
   };
+  const tone = inkFor(oklch.l);
   return {
     letter,
     name: NAMES[letter],
     oklch,
     css: oklchCss(oklch),
     hex: oklchToHex(oklch),
-    ink: oklch.l >= 0.62 ? "var(--color-ink)" : "var(--color-raised)",
+    ink: tone.ink,
+    inkHex: tone.inkHex,
   };
 }
 
@@ -134,6 +150,7 @@ export function allPigments(): Pigment[] {
   return ALPHABET.map((letter) => TABLE[letter]);
 }
 
+/** House 50 · manner 30 · field 20 — the role leads the mix. */
 export const TRIAD_WEIGHTS = [0.5, 0.3, 0.2] as const;
 
 export interface MixedPigment {
@@ -141,6 +158,7 @@ export interface MixedPigment {
   css: string;
   hex: string;
   ink: string;
+  inkHex: string;
 }
 
 export function mixLetters(letters: Letter[], weights: number[]): MixedPigment {
@@ -156,17 +174,24 @@ export function mixLetters(letters: Letter[], weights: number[]): MixedPigment {
     b += lab.b * w;
   });
   const oklch = fromLab(L, a, b);
+  const tone = inkFor(oklch.l);
   return {
     oklch,
     css: oklchCss(oklch),
     hex: oklchToHex(oklch),
-    ink: oklch.l >= 0.62 ? "var(--color-ink)" : "var(--color-raised)",
+    ink: tone.ink,
+    inkHex: tone.inkHex,
   };
 }
 
+export function mixPair(a: Letter, b: Letter) {
+  return mixLetters([a, b], [0.5, 0.5]);
+}
+
 export function mixTriad(triad: Triad): MixedPigment & { sources: Pigment[] } {
+  const mixed = mixLetters(triad, [...TRIAD_WEIGHTS]);
   return {
-    ...mixLetters(triad, [...TRIAD_WEIGHTS]),
+    ...mixed,
     sources: triad.map((letter) => pigmentOf(letter)),
   };
 }
@@ -179,4 +204,35 @@ export function mixLabel(triad: Triad): string {
 export function pigmentStyle(letter: Letter): { backgroundColor: string; color: string } {
   const pigment = pigmentOf(letter);
   return { backgroundColor: pigment.css, color: pigment.ink };
+}
+
+export function mixStyle(mix: MixedPigment): { backgroundColor: string; color: string } {
+  return { backgroundColor: mix.css, color: mix.ink };
+}
+
+/** Hard stops for a CSS conic-gradient, A at 12 o'clock. */
+export function conicStops(): string {
+  const half = STEP / 2;
+  return allPigments()
+    .map((pigment, index) => {
+      const start = ((index * STEP - half + 360) % 360).toFixed(3);
+      const end = ((index * STEP + half + 360) % 360).toFixed(3);
+      return `${pigment.css} ${start}deg ${end}deg`;
+    })
+    .join(", ");
+}
+
+/** Horizontal spectrum, A on the left, Z on the right. */
+export function ribbonStops(): string {
+  return allPigments()
+    .map((pigment, index) => {
+      const start = ((index / 26) * 100).toFixed(3);
+      const end = (((index + 1) / 26) * 100).toFixed(3);
+      return `${pigment.css} ${start}% ${end}%`;
+    })
+    .join(", ");
+}
+
+export function HUE_STEP(): number {
+  return STEP;
 }

@@ -1,4 +1,4 @@
-import type { Letter, LetterTheme } from "./types";
+import type { Letter, LetterTheme, TensionPair } from "./types";
 
 export const LEXICON: Record<Letter, LetterTheme> = {
   A: {
@@ -11,6 +11,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You meet the world as a beginning. Wanting, in you, is honesty.",
     challenge: "Wanting without choosing becomes restlessness. Pick one thing and keep it.",
     invitation: "Notice where you already want out, and take the step.",
+    complements: ["D", "N", "G"],
   },
   B: {
     letter: "B",
@@ -22,6 +23,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You make people and ideas belong to one another.",
     challenge: "Holding can become trapping. Belong without disappearing.",
     invitation: "Ask what is worth keeping — and what needs to be released.",
+    complements: ["C", "F", "X"],
   },
   C: {
     letter: "C",
@@ -33,6 +35,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You are often the reason something begins that would not have begun without you.",
     challenge: "Change without patience can burn the thing it meant to wake up.",
     invitation: "Start one change worth keeping, and stay long enough to see what it becomes.",
+    complements: ["B", "R", "D"],
   },
   D: {
     letter: "D",
@@ -44,6 +47,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You give things time. What you devote yourself to, you change.",
     challenge: "Depth can become hiding. Bring something back to the surface.",
     invitation: "Let one practice be visible.",
+    complements: ["E", "F", "L"],
   },
   E: {
     letter: "E",
@@ -55,6 +59,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You make more space than the situation asked for — and someone usually needs it.",
     challenge: "Expansion without a shoreline becomes scatter. Growth still needs a shape.",
     invitation: "Grow in one direction, not in every direction at once.",
+    complements: ["D", "P", "S"],
   },
   F: {
     letter: "F",
@@ -66,6 +71,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You keep room around a life. Other people breathe easier near it.",
     challenge: "Freedom without a promise is only drift. Choose, then stay freely.",
     invitation: "Ask what you would still choose if no one were watching — then give it your focus.",
+    complements: ["B", "D", "P"],
   },
   G: {
     letter: "G",
@@ -77,6 +83,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You leave people and projects larger than you found them, without making a speech of it.",
     challenge: "Growth that never rests becomes exhaustion. Rest is part of the work.",
     invitation: "Tend one living thing — a craft, a friendship, a practice.",
+    complements: ["X", "Z", "N"],
   },
   H: {
     letter: "H",
@@ -88,6 +95,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You hold a longer view, and offer it without forcing anyone to share it.",
     challenge: "Looking far can neglect the person standing next to you.",
     invitation: "Keep the long view, and set one honest table today.",
+    complements: ["I", "K", "P"],
   },
   I: {
     letter: "I",
@@ -99,6 +107,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You see the pattern before it is fashionable, and you keep faith with what you see.",
     challenge: "The inner room can lock. Insight is meant to reach a shared table.",
     invitation: "Say one private insight out loud.",
+    complements: ["S", "U", "H"],
   },
   J: {
     letter: "J",
@@ -110,6 +119,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You move a life — your own or someone else's — from here to a more honest there.",
     challenge: "The journey can become a refusal to arrive. Judgment needs a place to set the pack down.",
     invitation: "Take the next honest mile. Let joy come along.",
+    complements: ["K", "O", "S"],
   },
   K: {
     letter: "K",
@@ -121,6 +131,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You remember, you open, you make knowledge feel like kindness.",
     challenge: "Kinship can become a closed room. The key is also for the stranger who knocks.",
     invitation: "Offer one precise kindness to someone who already has a claim on you — then one who does not.",
+    complements: ["J", "H", "Q"],
   },
   L: {
     letter: "L",
@@ -132,6 +143,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You make the better thing visible, and stay with it after the first shine fades.",
     challenge: "Brightness can hide fatigue. Love that leads must also rest.",
     invitation: "Give your attention to one true thing.",
+    complements: ["D", "I", "W"],
   },
   M: {
     letter: "M",
@@ -143,6 +155,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You get things moving and keep them moving until they have a life of their own.",
     challenge: "Speed can outrun meaning. Pause without losing the current.",
     invitation: "Choose the motion that is already true, and give it a daily return.",
+    complements: ["N", "Q", "F"],
   },
   N: {
     letter: "N",
@@ -154,6 +167,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You see what needs feeding while others are still arguing about the problem.",
     challenge: "Nurture can forget the nurturer. Newness for its own sake can abandon what was just starting.",
     invitation: "Feed what is already alive in you. That is maintenance, not vanity.",
+    complements: ["A", "M", "Q"],
   },
   O: {
     letter: "O",
@@ -165,6 +179,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You leave a door unlatched in systems that prefer locks.",
     challenge: "Opening without order becomes a draft. Opportunity needs a frame, or it will not stay.",
     invitation: "Open one true door, and give the room behind it a simple, kept order.",
+    complements: ["D", "P", "Q"],
   },
   P: {
     letter: "P",
@@ -176,6 +191,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You give scattered energy a spine. People remember what they were for, near you.",
     challenge: "Purpose can harden into a script. Potential is larger than any single aim.",
     invitation: "Name the work that would still matter if it were slower. Then do the next inch of it.",
+    complements: ["F", "E", "Y"],
   },
   Q: {
     letter: "Q",
@@ -187,6 +203,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You refuse the cheap version. Your standards are a form of love.",
     challenge: "The quest can despise the ordinary day. Quiet is not the same as leaving the living.",
     invitation: "Ask the one question that would change the week, and stay beside it.",
+    complements: ["N", "K", "M"],
   },
   R: {
     letter: "R",
@@ -198,6 +215,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You restore pitch — in a conversation, a team, a day that had gone sharp.",
     challenge: "Resonance can become mere echo. Resilience is not the same as never changing key.",
     invitation: "Listen for the note that is yours, and return to it once before the day is over.",
+    complements: ["C", "T", "W"],
   },
   S: {
     letter: "S",
@@ -209,6 +227,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You make combinations no single part could have invented.",
     challenge: "Synergy can dissolve the self into the braid. Keep a name that is still yours.",
     invitation: "Join what wants joining, and keep one thread of your own.",
+    complements: ["I", "E", "U"],
   },
   T: {
     letter: "T",
@@ -220,6 +239,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You midwife necessary change — not by force, but by refusing the comfortable lie.",
     challenge: "Transformation can become a habit of crisis. Some truths want tending, not another fire.",
     invitation: "Name the one thing that is already over. Cross with as much tenderness as courage.",
+    complements: ["B", "R", "Y"],
   },
   U: {
     letter: "U",
@@ -231,6 +251,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You make a we that does not require anyone to become a smaller I.",
     challenge: "Unity can paper over a needed conflict. Understanding is not the same as agreement at any cost.",
     invitation: "Hold the whole, and keep one unique edge of yourself unblended.",
+    complements: ["I", "S", "X"],
   },
   V: {
     letter: "V",
@@ -242,6 +263,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You see the shape of a future while it is still only an idea, and you say so.",
     challenge: "Vision can refuse the humble near. Vulnerability keeps vocation from becoming a statue.",
     invitation: "Tell the true picture, then take one ordinary step that belongs to it.",
+    complements: ["D", "P", "W"],
   },
   W: {
     letter: "W",
@@ -253,6 +275,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You restore astonishment — a rare and practical mercy.",
     challenge: "Wonder can float above the will to act. Witnessing is not always enough.",
     invitation: "Look again at something you think you already understand. Then make one new connection.",
+    complements: ["D", "L", "R"],
   },
   X: {
     letter: "X",
@@ -264,6 +287,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You bring the missing variable. Rooms become more honest when you arrive.",
     challenge: "The edge can become exile as a habit. Crossing is a journey, not a permanent address.",
     invitation: "Honor what is rare in you, and let it serve something that is not only yourself.",
+    complements: ["B", "G", "U"],
   },
   Y: {
     letter: "Y",
@@ -275,6 +299,7 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You keep options humane. You know how to say yes without becoming a door anyone may walk through.",
     challenge: "Yielding can postpone a necessary stand. Yearning needs a chosen direction.",
     invitation: "Bend where bending is wisdom. Then let one yes become a spine.",
+    complements: ["A", "P", "Z"],
   },
   Z: {
     letter: "Z",
@@ -286,9 +311,151 @@ export const LEXICON: Record<Letter, LetterTheme> = {
     gift: "You raise the ceiling of a room by refusing the lukewarm.",
     challenge: "The peak is a place to visit. Living only there starves the climb and the descent.",
     invitation: "Give your zeal one worthy summit, and practice coming down.",
+    complements: ["Y", "G", "N"],
   },
 };
 
+export const TENSIONS: TensionPair[] = [
+  {
+    a: "A",
+    b: "N",
+    title: "Aspiration and Nurture",
+    copy: "The drive to become meets the duty to tend. Let ambition feed what is already alive, instead of dropping it for a shinier summit.",
+  },
+  {
+    a: "A",
+    b: "Y",
+    title: "Aspiration and Yielding",
+    copy: "You live in the argument between striving and surrender. Both sides are useful if neither is exiled.",
+  },
+  {
+    a: "B",
+    b: "C",
+    title: "Binding and Catalysis",
+    copy: "The wish to hold meets the wish to change. Know when a bond is a home and when it is a lid.",
+  },
+  {
+    a: "B",
+    b: "F",
+    title: "Binding and Freedom",
+    copy: "You want a door that latches and a window that opens. Both are honest.",
+  },
+  {
+    a: "B",
+    b: "T",
+    title: "Binding and Transformation",
+    copy: "What you keep and what you must drop speak at once. Some loyalties can finish their season without that being a betrayal.",
+  },
+  {
+    a: "B",
+    b: "X",
+    title: "Binding and Edge",
+    copy: "You may feel most yourself slightly outside the very rooms you help to make.",
+  },
+  {
+    a: "C",
+    b: "R",
+    title: "Catalysis and Resonance",
+    copy: "You start reactions and you also hear when the tone has gone wrong. Use both: ignite, then tune.",
+  },
+  {
+    a: "D",
+    b: "E",
+    title: "Depth and Expansion",
+    copy: "You want both the long stay and the larger room. Grow from a root, not from a rumor.",
+  },
+  {
+    a: "D",
+    b: "F",
+    title: "Depth and Freedom",
+    copy: "Practice makes you free. Freedom must not dissolve the practice.",
+  },
+  {
+    a: "D",
+    b: "O",
+    title: "Depth and Opening",
+    copy: "You can go far in and still leave a door open. Let order serve openness, not replace it.",
+  },
+  {
+    a: "D",
+    b: "V",
+    title: "Depth and Vision",
+    copy: "Vision without depth is a poster. Depth without vision is a cellar. You carry both.",
+  },
+  {
+    a: "D",
+    b: "W",
+    title: "Depth and Wonder",
+    copy: "Do not let mastery make you unimpressible, or wonder keep you from the unglamorous hour.",
+  },
+  {
+    a: "D",
+    b: "L",
+    title: "Depth and Luminosity",
+    copy: "You are asked to go down and to shine. Bring something back.",
+  },
+  {
+    a: "F",
+    b: "P",
+    title: "Freedom and Purpose",
+    copy: "Direction need not be a cage, and freedom need not be aimless. You live in that negotiation.",
+  },
+  {
+    a: "G",
+    b: "X",
+    title: "Growth and Edge",
+    copy: "Increase is real in you, and so is the refusal to be only what grows on schedule.",
+  },
+  {
+    a: "H",
+    b: "I",
+    title: "Horizon and Illumination",
+    copy: "Outer hope and inner sight can argue over who leads. Let them take turns.",
+  },
+  {
+    a: "I",
+    b: "S",
+    title: "Illumination and Synergy",
+    copy: "You see alone and you make with others. Neither gift should colonize the other.",
+  },
+  {
+    a: "I",
+    b: "U",
+    title: "Illumination and Unity",
+    copy: "You are asked to belong without dimming the inner room.",
+  },
+  {
+    a: "J",
+    b: "K",
+    title: "Journey and Kinship",
+    copy: "You may feel torn between going and staying. The living answer is often a journey that still writes home.",
+  },
+  {
+    a: "M",
+    b: "N",
+    title: "Momentum and Nurture",
+    copy: "Speed can starve what it carries. Move, and feed the moving thing.",
+  },
+  {
+    a: "N",
+    b: "Q",
+    title: "Nurture and Quest",
+    copy: "Care can postpone the search. The search can neglect the living. Both are your work.",
+  },
+  {
+    a: "Y",
+    b: "Z",
+    title: "Yielding and Zenith",
+    copy: "Flexibility and intensity share this name. Climb, then know how to come down.",
+  },
+];
+
 export function themeOf(letter: Letter): LetterTheme {
   return LEXICON[letter] ?? LEXICON.X;
+}
+
+export function findTension(a: Letter, b: Letter): TensionPair | undefined {
+  return TENSIONS.find(
+    (t) => (t.a === a && t.b === b) || (t.a === b && t.b === a),
+  );
 }

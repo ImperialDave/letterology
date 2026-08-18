@@ -5,8 +5,7 @@
  * not acceptable for them (see .grok/skills/og/SKILL.md).
  *
  * Games must also emit og:type="x:game" in the root head so X can present the
- * unfurl as a game card (see og skill § "og:type for games"), and
- * x:game:image pointing at public/x-banner.jpg for the 50:11 X feed card.
+ * unfurl as a game card (see og skill § "og:type for games").
  *
  * Checked on the filesystem (not the served head) because live preview has no
  * VITE_PUBLIC_HOSTNAME and renders no og:image tag at all, so the page alone
@@ -48,16 +47,6 @@ export function rootDeclaresOgTypeGame(rootTsx) {
   const contentThenProperty =
     /content\s*:\s*["']x:game["'][\s\S]{0,120}?property\s*:\s*["']og:type["']/i;
   return propertyThenContent.test(code) || contentThenProperty.test(code);
-}
-
-/**
- * True when root head meta declares x:game:image (TanStack head API form).
- * Comment-only scaffold notes do not count.
- */
-export function rootDeclaresGameImage(rootTsx) {
-  if (!rootTsx) return false;
-  const code = stripJsComments(rootTsx);
-  return /property\s*:\s*["']x:game:image["']/i.test(code);
 }
 
 export function computeBrandWarnings({ hasCanvas, workspaceRoot = "/workspace" }) {
@@ -119,37 +108,6 @@ export function computeBrandWarnings({ hasCanvas, workspaceRoot = "/workspace" }
         + `when a host exists) per ${skillPath}. Do not invent x:type or overload twitter:card `
         + "as the game signal.",
     );
-  }
-
-  // Games with a custom link card must also ship the 50:11 X feed card and
-  // declare it as x:game:image. Skip while still on the og.grok.me placeholder
-  // — that pass has not started yet.
-  const customCardWired = cardPath !== undefined && !rootTsx.includes("og.grok.me");
-  if (hasCanvas && customCardWired) {
-    const bannerPath = join(workspaceRoot, "public/x-banner.jpg");
-    if (!existsSync(bannerPath)) {
-      warnings.push(
-        `BRAND WARNING: this looks like a game/canvas app but ${bannerPath} is missing. `
-          + "Games need a 50:11 X feed card (1200×264 JPEG) declared as x:game:image — "
-          + `open ${skillPath} and finish the brand-asset pass.`,
-      );
-    } else if (statSync(bannerPath).size > MAX_CARD_BYTES) {
-      // Same scraper budget as og.jpg: an oversized banner validates locally
-      // but silently fails to unfurl on X.
-      warnings.push(
-        `BRAND WARNING: ${bannerPath} is over 600 KB — link scrapers (X card previews `
-          + "included) time out or skip images this heavy, so the feed card silently fails "
-          + `to unfurl. Re-encode as JPEG (ffmpeg -q:v 4) per ${skillPath}.`,
-      );
-    }
-    if (!rootDeclaresGameImage(rootTsx)) {
-      warnings.push(
-        'BRAND WARNING: this looks like a game/canvas app but src/routes/__root.tsx is missing '
-          + 'x:game:image. Set { property: "x:game:image", content: xBanner } pointing at '
-          + `"https://\${host}/x-banner.jpg" with x:game:image:width/height 1200/264 `
-          + `(same host guard as og:image) per ${skillPath}.`,
-      );
-    }
   }
 
   return warnings;

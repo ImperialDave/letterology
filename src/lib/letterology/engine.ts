@@ -1,0 +1,366 @@
+import { findTension, LEXICON, themeOf } from "./lexicon";
+import { alliesOf, bondCopy, enemiesOf } from "./circle";
+import { almanacOf } from "./calendar";
+import { archetypeOf, houseOf, pickTriad } from "./archetypes";
+import type {
+  Horoscope,
+  Letter,
+  LetterInventory,
+  NamePart,
+  TensionPair,
+} from "./types";
+import { ALPHABET, VOWEL_LETTERS } from "./types";
+
+const FOLDS: Record<string, string> = {
+  Æ: "AE",
+  æ: "AE",
+  Œ: "OE",
+  œ: "OE",
+  Ø: "O",
+  ø: "O",
+  Ð: "D",
+  ð: "D",
+  Þ: "TH",
+  þ: "TH",
+  ß: "SS",
+  Ł: "L",
+  ł: "L",
+  Đ: "D",
+  đ: "D",
+};
+
+export function foldCharacters(raw: string): string {
+  let out = "";
+  for (const ch of raw) {
+    out += FOLDS[ch] ?? ch;
+  }
+  return out.normalize("NFD").replace(/\p{M}/gu, "");
+}
+
+const DIGIT_AS_LETTER: Record<string, string> = {
+  "0": "F",
+  "1": "A",
+  "2": "B",
+  "3": "C",
+  "4": "D",
+  "5": "E",
+  "6": "F",
+  "7": "G",
+  "8": "H",
+  "9": "I",
+};
+
+export function parseName(raw: string): { displayName: string; parts: NamePart[] } {
+  const displayName = raw.trim().replace(/^@+/, "").replace(/\s+/g, " ");
+  const folded = foldCharacters(displayName);
+  const tokens = folded.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const parts: NamePart[] = tokens
+    .map((token) => ({
+      original: token,
+      letters: [...token.toUpperCase()]
+        .map((ch) => (/[A-Z]/.test(ch) ? ch : DIGIT_AS_LETTER[ch] ?? ""))
+        .join(""),
+    }))
+    .filter((p) => p.letters.length > 0);
+  return { displayName, parts };
+}
+
+function isVowelInPart(letter: Letter, indexInPart: number): boolean {
+  if (VOWEL_LETTERS.has(letter)) return true;
+  if (letter === "Y") return indexInPart > 0;
+  return false;
+}
+
+export function scoreParts(parts: NamePart[]): LetterInventory[] {
+  const byLetter = new Map<Letter, LetterInventory>();
+  let globalIndex = 0;
+
+  parts.forEach((part, partIndex) => {
+    const chars = [...part.letters];
+    chars.forEach((letter, i) => {
+      const isSignature = partIndex === 0 && i === 0;
+      const isInitial = i === 0;
+      const isFinal = i === chars.length - 1 && chars.length > 1;
+      let weight = 1;
+      if (isSignature) weight += 1.6;
+      else if (isInitial) weight += 0.8;
+      if (isFinal) weight += 0.25;
+
+      const existing = byLetter.get(letter);
+      if (existing) {
+        existing.count += 1;
+        existing.weight += weight;
+        existing.isSignature = existing.isSignature || isSignature;
+        existing.isInitial = existing.isInitial || isInitial;
+        existing.isVowel = existing.isVowel || isVowelInPart(letter, i);
+      } else {
+        byLetter.set(letter, {
+          letter,
+          count: 1,
+          weight: Math.round(weight * 100) / 100,
+          firstIndex: globalIndex,
+          isVowel: isVowelInPart(letter, i),
+          isSignature,
+          isInitial,
+        });
+      }
+      globalIndex += 1;
+    });
+  });
+
+  return [...byLetter.values()].sort(compareInventory);
+}
+
+function compareInventory(a: LetterInventory, b: LetterInventory): number {
+  if (b.weight !== a.weight) return b.weight - a.weight;
+  if (a.isSignature !== b.isSignature) return a.isSignature ? -1 : 1;
+  return a.firstIndex - b.firstIndex;
+}
+
+function splitCircle(ranked: LetterInventory[], signature: Letter) {
+  const present = new Set(ranked.map((item) => item.letter));
+  const allies = alliesOf(signature);
+  const enemies = enemiesOf(signature);
+  return {
+    allies: [...allies],
+    enemies: [...enemies],
+    kinPresent: allies.filter((letter) => present.has(letter)),
+    kinAbsent: allies.filter((letter) => !present.has(letter)),
+    crossPresent: enemies.filter((letter) => present.has(letter)),
+    crossAbsent: enemies.filter((letter) => !present.has(letter)),
+  };
+}
+
+function pickTension(
+  ranked: LetterInventory[],
+  signature: Letter,
+  crossPresent: Letter[],
+): TensionPair | null {
+  const living = crossPresent[0];
+  if (living) {
+    const aHouse = houseOf(signature).noun;
+    const bHouse = houseOf(living).noun;
+    return {
+      a: signature,
+      b: living,
+      title: `${aHouse} and ${bHouse}`,
+      copy: bondCopy(signature, living, "enemy"),
+    };
+  }
+
+  const top = ranked.slice(0, 6);
+  let best: { pair: TensionPair; score: number } | null = null;
+  for (let i = 0; i < top.length; i++) {
+    for (let j = i + 1; j < top.length; j++) {
+      const pair = findTension(top[i].letter, top[j].letter);
+      if (!pair) continue;
+      const score = top[i].weight + top[j].weight - i * 0.15 - j * 0.15;
+      if (!best || score > best.score) best = { pair, score };
+    }
+  }
+  return best?.pair ?? null;
+}
+
+function pickAbsentSeats(kinAbsent: Letter[], crossAbsent: Letter[], primary: Letter): Letter[] {
+  const out: Letter[] = [];
+  for (const letter of [...kinAbsent, ...crossAbsent]) {
+    if (!out.includes(letter)) out.push(letter);
+    if (out.length >= 2) break;
+  }
+  if (out.length < 2) {
+    for (const letter of ALPHABET) {
+      if (letter === primary || out.includes(letter)) continue;
+      out.push(letter);
+      if (out.length >= 2) break;
+    }
+  }
+  return out.slice(0, 2);
+}
+
+function possessive(name: string): string {
+  if (!name) return "This name's";
+  return name.endsWith("s") || name.endsWith("S") ? `${name}'` : `${name}'s`;
+}
+
+function listHouses(letters: Letter[]): string {
+  return letters.map((letter) => `${houseOf(letter).noun} (${letter})`).join(", ");
+}
+
+export function buildHoroscope(rawName: string, now = new Date()): Horoscope | null {
+  const { displayName, parts } = parseName(rawName);
+  const inventory = scoreParts(parts);
+  if (inventory.length === 0) return null;
+
+  const primary = inventory[0];
+  const secondaries = inventory.slice(1, 4);
+  const gifts = [primary, ...secondaries.slice(0, 2)].map((x) => x.letter);
+  const signature = inventory.find((x) => x.isSignature)?.letter ?? primary.letter;
+  const circle = splitCircle(inventory, signature);
+  const tension = pickTension(inventory, signature, circle.crossPresent);
+  const shadows = pickAbsentSeats(circle.kinAbsent, circle.crossAbsent, primary.letter);
+  const vowels = inventory.filter((x) => x.isVowel);
+  const consonants = inventory.filter((x) => !x.isVowel);
+
+  const almanac = almanacOf(now);
+  const daily = almanac.dateLetter;
+  const period = almanac.fortnight.letter;
+
+  const p = themeOf(primary.letter);
+  const g1 = themeOf(gifts[0]);
+  const g2 = gifts[1] ? themeOf(gifts[1]) : null;
+  const g3 = gifts[2] ? themeOf(gifts[2]) : null;
+  const s1 = themeOf(shadows[0]);
+  const s2 = shadows[1] ? themeOf(shadows[1]) : null;
+  const dailyTheme = themeOf(daily);
+  const periodTheme = themeOf(period);
+
+  const vowelLead = vowels[0] ? themeOf(vowels[0].letter) : null;
+  const consLead = consonants[0] ? themeOf(consonants[0].letter) : null;
+
+  const primaryStatement = `The first letter of ${possessive(displayName)} username is ${primary.letter}, so the name starts as the ${houseOf(primary.letter).noun}. ${p.essence} That is an entrance, not a cage.`;
+
+  const giftBits = [g1, g2, g3].filter(Boolean).map((t) => `${t!.letter} (${t!.name.toLowerCase()})`);
+  const giftsStatement = g2
+    ? `After the first letter, the ones that come back most — first and last letters of a word count extra, so repeats are louder — are ${giftBits.join(", ")}. So ${g1.gift} ${g2.gift}`
+    : g1.gift;
+
+  const challengeStatement = tension
+    ? `${tension.copy} ${circle.kinAbsent[0] ? `An unused ally is ${houseOf(circle.kinAbsent[0]).house}: ${themeOf(circle.kinAbsent[0]).invitation}` : ""}`.trim()
+    : s2
+      ? `${s1.name} and ${s2.name.toLowerCase()} are nearly silent in this name. ${s1.invitation} ${s2.invitation}`
+      : s1.challenge;
+
+  const innerNote = vowelLead
+    ? `The vowels in this name lean toward ${vowelLead.name.toLowerCase()}, so the private life sounds like this: ${vowelLead.inner}`
+    : "This name has almost no vowels, so the private life is thin on the page. The work is almost all public.";
+  const outerNote = consLead
+    ? `The consonants lean toward ${consLead.name.toLowerCase()}, so the public face sounds like this: ${consLead.outer}`
+    : "This name is almost all vowels, so the public work is thin on the page. The inner life is loud; the room still needs a face.";
+
+  const triad = pickTriad(inventory, signature);
+  const archetype = archetypeOf(triad);
+  const kindred = circle.allies.map((letter) => archetypeOf([letter, triad[1], triad[2]]));
+  const mannerTheme = themeOf(triad[1]);
+  const fieldTheme = themeOf(triad[2]);
+
+  const methodStatement = `We counted the letters of this username. The first letter is the role (${signature}, ${houseOf(signature).noun}). After that we count how often a letter returns — first and last letters of a word count extra — so ${triad[1]} is how you work (${mannerTheme.name.toLowerCase()}) and ${triad[2]} is where (${fieldTheme.name.toLowerCase()}). A letter that comes back is a decision the name keeps making.`;
+
+  const wheelStatement = [
+    circle.kinPresent.length
+      ? `This name already carries allied houses: ${listHouses(circle.kinPresent)}.`
+      : `None of the ${houseOf(signature).noun}'s allies appear in the letters — those relationships come from outside the name.`,
+    circle.crossPresent.length
+      ? `The opposing houses in the name are ${listHouses(circle.crossPresent)}.`
+      : `The opposing houses are quiet in this name.`,
+    circle.kinAbsent.length
+      ? `Allies not in the name: ${listHouses(circle.kinAbsent)}.`
+      : `Every allied house already appears in the letters.`,
+    "Allies complete a job this role cannot finish alone. Enemies are the blind spot — the work this role will not look at, not a villain.",
+  ].join(" ");
+
+  const synthesis = [
+    `${displayName} stands in the ${archetype.house}. ${archetype.myth}`,
+    tension
+      ? `The main tension is ${tension.title.toLowerCase()}.`
+      : p.invitation,
+    `Watch where ${p.name.toLowerCase()} already shows up in ordinary days. This is a portrait, not a prediction, so use it to notice. Do not spend it as an excuse.`,
+  ].join(" ");
+
+  const lettersInName = inventory.map((item) => item.letter);
+  const dailyInName = lettersInName.includes(daily);
+  const periodHouse = houseOf(period);
+  const dailyStatement = almanac.fortnight.hinge
+    ? `Today is a leftover day between one year-walk and the next, so it has no numbered two-week house. The date letter is still ${daily} (${dailyTheme.name}). ${dailyTheme.invitation}`
+    : `Today’s date letter is ${daily} — ${dailyTheme.name}${dailyInName ? ", and that letter is already in this username, so the day is using something you already carry" : ", and that letter is not in this username, so treat today as a guest, not a verdict"}. ${dailyTheme.invitation}`;
+  const periodStatement = almanac.fortnight.hinge
+    ? `The year is between circles, so these leftover days belong to the Fool until the Seeker opens the walk again.`
+    : `These fourteen days belong to ${period} — the ${periodHouse.house}, day ${almanac.fortnight.dayInSeat} of 14. That is how the season is working, not who you are. ${periodTheme.invitation}`;
+
+  return {
+    displayName,
+    normalized: parts.map((part) => part.letters).join(" "),
+    parts,
+    signature,
+    primary,
+    secondaries,
+    inventory,
+    vowels,
+    consonants,
+    tension,
+    shadows,
+    gifts,
+    allies: circle.allies,
+    enemies: circle.enemies,
+    kinPresent: circle.kinPresent,
+    kinAbsent: circle.kinAbsent,
+    crossPresent: circle.crossPresent,
+    crossAbsent: circle.crossAbsent,
+    daily,
+    period,
+    triad,
+    archetype,
+    kindred,
+    statements: {
+      primary: primaryStatement,
+      gifts: giftsStatement,
+      challenge: challengeStatement,
+      synthesis,
+      method: methodStatement,
+      wheel: wheelStatement,
+      daily: dailyStatement,
+      period: periodStatement,
+      vowelNote: innerNote,
+      consonantNote: outerNote,
+    },
+  };
+}
+
+export function readingAsText(h: Horoscope): string {
+  const lines = [
+    `Reading — ${h.displayName}`,
+    `Normalized: ${h.normalized}`,
+    "",
+    `Signature letter: ${h.signature}`,
+    `Primary: ${h.primary.letter} — ${themeOf(h.primary.letter).name}`,
+    `Triad: ${h.archetype.code}`,
+    `Letter Path: ${h.archetype.title} (${h.archetype.house})`,
+    `Method: ${h.statements.method}`,
+    `Secondary: ${h.secondaries.map((s) => `${s.letter} (${themeOf(s.letter).name})`).join(", ") || "—"}`,
+    h.tension ? `Tension: ${h.tension.title}` : "",
+    `Allies: ${h.allies.join(", ")}`,
+    `Enemies: ${h.enemies.join(", ")}`,
+    `Allies not in the name: ${h.shadows.map((s) => `${s} (${themeOf(s).name})`).join(", ")}`,
+    `Date letter: ${h.daily} — ${themeOf(h.daily).name}`,
+    `Fortnight: ${h.period} — ${themeOf(h.period).name}`,
+    "",
+    h.statements.primary,
+    "",
+    `${h.archetype.title}`,
+    h.archetype.myth,
+    h.archetype.correspondence,
+    h.archetype.doctrine,
+    h.archetype.portrait,
+    `When it fails: ${h.archetype.shadow}`,
+    `When it works: ${h.archetype.gold}`,
+    "",
+    h.statements.wheel,
+    "",
+    h.statements.gifts,
+    "",
+    h.statements.challenge,
+    "",
+    h.statements.synthesis,
+    "",
+    h.statements.vowelNote,
+    h.statements.consonantNote,
+    "",
+    "This reading is a portrait, not a prediction. The letters you already carry are the material.",
+  ];
+  return lines.filter((line, i, arr) => !(line === "" && arr[i - 1] === "")).join("\n");
+}
+
+export function letterPath(parts: NamePart[]): Letter[] {
+  return parts.flatMap((p) => [...p.letters]);
+}
+
+export { LEXICON };
